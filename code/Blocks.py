@@ -32,9 +32,7 @@ class TridentBlock(nn.Module):
     @classmethod
     def share_weight(cls, block1, block2, no_bias=True):
         # block1共享block2的权重（将block2的权重复制给block1）
-        if not isinstance(block1, TridentBlock):
-            raise Exception("wrongBlockClass")
-        if not isinstance(block2, TridentBlock):
+        if not isinstance(block1, TridentBlock) or not isinstance(block2, TridentBlock):
             raise Exception("wrongBlockClass")
         if no_bias:
             block1.conv1.weight = block2.conv1.weight

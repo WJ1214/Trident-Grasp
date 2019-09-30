@@ -52,6 +52,38 @@ class TridentNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    @staticmethod
+    def layer_share_weight(net, name, no_bias=True):
+        """share weight between 3 Trident branch"""
+        if name not in ['Trident1', 'Trident2', 'Trident3']:
+            raise Exception("WrongName")
+        if no_bias:
+            if name == 'Trident1':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T2, T1)
+                    TridentBlock.share_weight(T3, T1)
+            if name == 'Trident2':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T1, T2)
+                    TridentBlock.share_weight(T3, T2)
+            if name == 'Trident3':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T1, T3)
+                    TridentBlock.share_weight(T2, T3)
+        else:
+            if name == 'Trident1':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T2, T1, no_bias=False)
+                    TridentBlock.share_weight(T3, T1, no_bias=False)
+            if name == 'Trident2':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T1, T2, no_bias=False)
+                    TridentBlock.share_weight(T3, T2, no_bias=False)
+            if name == 'Trident3':
+                for (T1, T2, T3) in zip(list(net.Trident1), list(net.Trident2), list(net.Trident3)):
+                    TridentBlock.share_weight(T1, T3, no_bias=False)
+                    TridentBlock.share_weight(T2, T3, no_bias=False)
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)

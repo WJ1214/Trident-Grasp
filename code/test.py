@@ -14,11 +14,5 @@ def tridentnet50( **kwargs):
 
 
 net = tridentnet50()
-for layer in list(net.Trident1)[0].layer:
-    if isinstance(layer, nn.Conv2d):
-        print("CONV1_weight:", layer.weight.size(), "CONV!_bias:", layer.bias)
-
-for layer in list(net.Trident2)[0].layer:
-    if isinstance(layer, nn.Conv2d):
-        print("CONV2_weight:", layer.weight.size(), "CONV2_bias:", layer.bias)
+TridentNet.layer_share_weight(net, 'Trident3')
 
