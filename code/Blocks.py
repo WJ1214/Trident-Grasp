@@ -48,8 +48,10 @@ class TridentBlock(nn.Module):
             block1.bn3.weight = block2.bn3.weight
             block1.bn3.bias = block2.bn3.bias
             if block1.downsample is not None:
+                # share the conv weight
                 list(block1.downsample)[0].weight = list(block2.downsample)[0].weight
                 list(block1.downsample)[0].bias = None
+                # share the batch_normal weight
                 list(block1.downsample)[1].weight = list(block2.downsample)[1].weight
                 list(block1.downsample)[1].bias = list(block2.downsample)[1].bias
         else:
@@ -66,8 +68,10 @@ class TridentBlock(nn.Module):
             block1.bn3.weight = block2.bn3.weight
             block1.bn3.bias = block2.bn3.bias
             if block1.downsample is not None:
+                # share the conv weight
                 list(block1.downsample)[0].weight = list(block2.downsample)[0].weight
                 list(block1.downsample)[0].bias = list(block2.downsample)[0].bias
+                # share the batch_normal weight
                 list(block1.downsample)[1].weight = list(block2.downsample)[1].weight
                 list(block1.downsample)[1].bias = list(block2.downsample)[1].bias
 

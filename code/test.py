@@ -1,7 +1,6 @@
-from TridentNet import TridentNet
+from TridenHead import TridentHead
 from Blocks import TridentBlock
 import torch.nn as nn
-import torchvision.models as models
 
 
 def tridentnet50( **kwargs):
@@ -9,10 +8,9 @@ def tridentnet50( **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
-    model = TridentNet(TridentBlock, [1, 2, 3], [3, 4, 6, 3], **kwargs)
+    model = TridentHead(TridentBlock, [1, 2, 3], 3, **kwargs)
     return model
 
 
 net = tridentnet50()
-TridentNet.layer_share_weight(net, 'Trident3')
-
+# TridentNet.layer_share_weight(net, 'Trident3')
