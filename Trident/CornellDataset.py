@@ -41,12 +41,12 @@ class CornellDataset(Dataset):
             self.image.append(img)
         self.data = np.array(self.data)
 
-        # for i, elm in enumerate(self.data):
-        #     elm_num = elm.shape[0]
-        #     need_num = max_num - elm_num
-        #     zero = np.zeros((need_num, 8))
-        #     elm = np.vstack((elm, zero))
-        #     self.data[i] = elm
+        for i, elm in enumerate(self.data):
+            elm_num = elm.shape[0]
+            need_num = max_num - elm_num
+            zero = np.zeros((need_num, 8))
+            elm = np.vstack((elm, zero))
+            self.data[i] = elm
 
         # chose if train data
         if train:
