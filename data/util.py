@@ -286,11 +286,86 @@ def random_flip(img, y_random=False, x_random=False,
         return img, {'y_flip': y_flip, 'x_flip': x_flip}
     else:
         return img
+# ---------------------------------------------------------------#
 
 
-import numpy as np
-import random
-import cv2
+def numpy_box2list(bbox):
+    # 输入一张图片的相应numpy格式抓取框
+    res = []
+    for elm in bbox:
+        box = []
+        vex1 = list(elm[:2])
+        vex2 = list(elm[2:4])
+        vex3 = list(elm[4:6])
+        vex4 = list(elm[6:8])
+        box.append(vex1)
+        box.append(vex2)
+        box.append(vex3)
+        box.append(vex4)
+        res.append(box)
+    return res
+
+
+def tvtsf2np(img):
+    # 将一张经过torchvision.transform转换过的image转换为opencv格式的numpy
+    img = img.numpy() * 255
+    img = img.astype('uint8')
+    img = np.transpose(img, (1, 2, 0))
+    B, G, R = cv2.split(img)
+    img = cv2.merge([R, G, B])
+    return img
+
+
+def show_bbox_image(image, bbox):
+    if not isinstance(image, np.ndarray):
+        image = tvtsf2np(image)
+    if not isinstance(bbox, list):
+        bbox = numpy_box2list(bbox)
+    for elm in bbox:
+        pts = np.array(elm, np.int32)
+        pts.reshape((-1, 1, 2))
+        cv2.polylines(image, [pts], True, (255, 0, 0), 2)
+    cv2.imshow('1', image)
+    cv2.waitKey(0)
+
+
+def calculate_x_angle(bbox):
+    # 输入一个list格式的抓取框
+    vex1 = bbox[0]
+    vex2 = bbox[1]
+    arr_a = np.array([(vex2[0] - vex1[0]), (vex2[1] - vex1[1])])  # 向量a
+    axis_x = np.array([1, 0])  # 向量b
+    cos_value = (float(arr_a.dot(axis_x)) / (np.sqrt(arr_a.dot(arr_a)) * np.sqrt(axis_x.dot(axis_x))))
+    return np.arccos(cos_value) * (180 / np.pi)
+
+
+def calculate_y_angle(bbox):
+    # 输入一个list格式的抓取框
+    vex1 = bbox[0]
+    vex2 = bbox[1]
+    arr_a = np.array([(vex2[0] - vex1[0]), (vex2[1] - vex1[1])])  # 向量a
+    axis_y = np.array([0, 1])  # 向量b
+    cos_value = (float(arr_a.dot(axis_y)) / (np.sqrt(arr_a.dot(arr_a)) * np.sqrt(axis_y.dot(axis_y))))
+    return np.arccos(cos_value) * (180 / np.pi)
+
+
+def calculate_angle(bbox):
+    # 输入一个list类型的bbox,返回其应当顺时针旋转的角度
+    x_angle = calculate_x_angle(bbox)
+    y_angle = calculate_y_angle(bbox)
+    angle_res = 0
+    if x_angle >= 90 and y_angle <= 90:
+        angle_res = x_angle - 90
+    if x_angle <= 90 and y_angle <= 90:
+        angle_res = 90 + x_angle
+    if x_angle <= 90 and y_angle >= 90:
+        angle_res = 90 - x_angle
+    if x_angle >= 90 and y_angle >= 90:
+        angle_res = 270 - x_angle
+    return angle_res
+
+
+# ---------------------------------------------------------------------------------#
 
 
 def random_translate(img, bboxes, p=0.5):
