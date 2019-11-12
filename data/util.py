@@ -354,16 +354,46 @@ def calculate_angle(bbox):
     x_angle = calculate_x_angle(bbox)
     y_angle = calculate_y_angle(bbox)
     angle_res = 0
-    if x_angle >= 90 and y_angle <= 90:
+    if x_angle > 90 and y_angle < 90:
         angle_res = x_angle - 90
-    if x_angle <= 90 and y_angle <= 90:
+    if x_angle < 90 and y_angle < 90:
         angle_res = 90 + x_angle
-    if x_angle <= 90 and y_angle >= 90:
+    if x_angle < 90 and y_angle > 90:
         angle_res = 90 - x_angle
-    if x_angle >= 90 and y_angle >= 90:
+    if x_angle > 90 and y_angle > 90:
         angle_res = 270 - x_angle
+    if x_angle == 90:
+        angle_res = 0
+    if x_angle ==0:
+        angle_res = 90
     return angle_res
 
+
+def box_add0(bbox, num):
+    length = bbox.shape[0]
+    need = num - length
+    zeros = np.zeros((need, 8))
+    box = np.vstack((bbox, zeros))
+    return box
+
+
+def angle_add0(angles, num):
+    length = angles.shape[0]
+    need = num - length
+    zeros = np.zeros(need)
+    angle = np.hstack((angles, zeros))
+    return angle
+
+
+def box_remove0(bbox):
+    zeros = np.zeros(8)
+    length = bbox.shape[0]
+    for i, box in enumerate(bbox):
+        if (box == zeros).all():
+            length = i
+            break
+    bbox = bbox[:length]
+    return bbox, length
 
 # ---------------------------------------------------------------------------------#
 
