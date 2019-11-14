@@ -2,6 +2,8 @@ import numpy as np
 from PIL import Image
 import random
 import cv2
+import math
+import skimage.transform as transform
 
 
 def read_image(path, dtype=np.float32, color=True):
@@ -238,6 +240,52 @@ def translate_bbox(bbox, y_offset=0, x_offset=0):
 
 
 # ---------------------------------------------------------------#
+def rotate_loc(point, img, angle):
+    # 输入点在图像上的位置以及相应的numpy格式图像、旋转角度angle，返回旋转图像后点在图像上的位置
+    x1, y1 = point
+    row, col = img.shape[:2]
+    mid = (row/2, col/2)
+    x2, y2 = mid
+    x1 = x1
+    y1 = row - y1
+    x2 = x2
+    y2 = row - y2
+    x = (x1 - x2) * math.cos(math.pi / 180.0 * angle) - (y1 - y2) * math.sin(math.pi / 180.0 * angle) + x2
+    y = (x1 - x2) * math.sin(math.pi / 180.0 * angle) + (y1 - y2) * math.cos(math.pi / 180.0 * angle) + y2
+    x = x
+    y = row - y
+    return x, y
+
+
+def rotate_bbox(bbox, img, angle):
+    for box in bbox:
+        box[0:2] = rotate_loc((box[0:2]), img, angle)
+        box[2:4] = rotate_loc((box[2:4]), img, angle)
+        box[4:6] = rotate_loc((box[4:6]), img, angle)
+        box[6:8] = rotate_loc((box[6:8]), img, angle)
+
+
+def rotate_box_image(bbox, image, angle=30):
+    bbox = bbox.copy()
+    angle = random.randint(-angle, angle)
+    img = transform.rotate(image, angle, False)
+    rotate_bbox(bbox, img, angle)
+    return img, bbox
+
+
+def random_crop(image, bbox, x_offset, y_offset):
+    random_x = np.random.randint(-x_offset, x_offset, 1)[0]
+    random_y = np.random.randint(-y_offset, y_offset, 1)[0]
+    # 使用copy()函数，防止改变数据集原本存储的self.data值
+    bbox = bbox.copy()
+    img = image.copy()
+    # 随机裁剪图像
+    img = img[80 + random_y:400 + random_y, 160 + random_x:480 + random_x, :]
+    # 将bbox缩放至随机裁剪后的image内
+    bbox[:, 0::2] = bbox[:, 0::2] - 160 - random_x
+    bbox[:, 1::2] = bbox[:, 1::2] - 80 - random_y
+    return img, bbox
+
 
 def random_image_flip(img, x_random=False, y_random=False, return_param=True):
     """Randomly flip an image in vertical or horizontal direction.
@@ -404,31 +452,38 @@ def box_remove0(bbox):
     return bbox, length
 
 
-class RandomCenterCrop(object):
-    def __init__(self, x_offset=50, y_offset=50):
+class PreProcess(object):
+    def __init__(self, x_offset=50, y_offset=50, angle=30):
         self.x_offset = x_offset
         self.y_offset = y_offset
+        self.angle = angle
 
     def __call__(self, img, bbox):
         # 输入一张opencv读取的numpy类型的image
         # 输入该张image在数据集中对应的numpy类型抓取框数组
-        random_x = np.random.randint(-self.x_offset, self.x_offset, 1)[0]
-        random_y = np.random.randint(-self.y_offset, self.y_offset, 1)[0]
-        # 使用copy()函数，防止改变数据集原本存储的self.data值
-        bbox = bbox.copy()
-        img = img.copy()
-        # 随机裁剪图像
-        img = img[80 + random_y:400 + random_y, 160 + random_x:480 + random_x, :]
+        img, bbox = random_crop(img, bbox, self.x_offset, self.y_offset)
+        # random_crop函数中对img和bbox都使用了copy函数
+        need_del = []
+        for i, box in enumerate(bbox):
+            if (box < 0).any():
+                need_del.append(i)
+            if (box >= 320).any():
+                need_del.append(i)
+        bbox = np.delete(bbox, need_del, 0)
+        zeros = np.zeros((len(need_del), 8))
+        bbox = np.vstack((bbox, zeros))
+        # 对img和bbox进行随机旋转
+        img, bbox = rotate_box_image(bbox, img, self.angle)
+        # rotate_box_image函数中对bbox使用了copy函数
         # 随机翻转图像
         img, param = random_image_flip(img, True, True, True)
         x_flip = param.get('x_flip')
         y_flip = param.get('y_flip')
         H = img.shape[0]
         W = img.shape[1]
-        # 按照图像随机裁剪的数值将bbox缩放至图像内，后随机翻转
-        bbox[:, 0::2] = bbox[:, 0::2] - 160 - random_x
-        bbox[:, 1::2] = bbox[:, 1::2] - 80 - random_y
+        # 翻转bbox
         bbox = flip_bbox(bbox, (H, W), x_flip, y_flip)
+        # 剔除不在图像内的bbox
         need_del = []
         for i, box in enumerate(bbox):
             if (box < 0).any():
@@ -465,7 +520,7 @@ def random_translate(img, bboxes, p=0.5):
     return img, bboxes
 
 
-def random_crop(img, bboxes, p=0.5):
+def random_crop1(img, bboxes, p=0.5):
     # 随机裁剪
     if random.random() < p:
         h_img, w_img, _ = img.shape
