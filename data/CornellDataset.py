@@ -22,13 +22,13 @@ class CornellDataset(Dataset):
         self.data = []                        # bbox of every image
         self.angles = []
         self.transforms = transforms
+        self.max_num = 0
         if os.path.exists(path):
             self.image_path = "{}/image".format(path)
             self.data_path = "{}/pos_label".format(path)
         else:
             raise Exception("noSuchFilePath")
 
-        max_num = 0
         for image, pos_label in zip(os.scandir(self.image_path), os.scandir(self.data_path)):
             image_box = []
             for lines in open(pos_label):
@@ -36,9 +36,8 @@ class CornellDataset(Dataset):
             image_box = np.array(image_box)
             num = image_box.shape[0]
             num = int(num/4)
-            max_num = max(max_num, num)
+            self.max_num = max(self.max_num, num)
             image_box = image_box.reshape((num, 8))
-
             self.data.append(image_box)
             img = "{root}/image/{image_name}".format(root=path, image_name=image.name)
             self.image.append(img)
@@ -50,7 +49,14 @@ class CornellDataset(Dataset):
             for i, elm in enumerate(bbox):
                 angle = util.calculate_angle(bbox[i])
                 angles.append(angle)
+            angles = np.array(angles)
             self.angles.append(angles)
+
+        # for i, (bbox, angle) in enumerate(zip(self.data, self.angles)):
+        #     bbox = util.box_add0(bbox, max_num)
+        #     angle = util.angle_add0(angle, max_num)
+        #     self.data[i] = bbox
+        #     self.angles[i] = angle
 
         # chose if train data
         if train:
@@ -74,12 +80,17 @@ class CornellDataset(Dataset):
         img = self.image[index]
         # img = Image.open(img).convert('RGB')
         img = cv2.imread(img)
-        B, G, R = cv2.split(img)
-        img = cv2.merge([R, G, B])
-        # 将opencv的BGR格式转换为RGB格式
-        if self.transforms is not None:
+        if not isinstance(self.transforms, torchvision.transforms.ToTensor):
+            img, box = self.transforms(img, self.data[index])
+            trans = torchvision.transforms.ToTensor()
+            img = trans(img)
+            box = util.box_add0(box, self.max_num)
+        else:
             img = self.transforms(img)
-        return img, self.data[index], self.angles[index]
+            box = self.data[index]
+            box = util.box_add0(box, self.max_num)
+        angle = util.angle_add0(self.angles[index], self.max_num)
+        return img, box, angle
 
     def __len__(self):
         return len(self.data)
