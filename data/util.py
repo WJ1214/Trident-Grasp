@@ -75,7 +75,8 @@ def resize_bbox(bbox, in_size, out_size):
     return bbox
 
 
-def flip_bbox(bbox, size, y_flip=False, x_flip=False):
+# 这个函数之后可能有用
+def flip_bbox(bbox, size, x_flip=False, y_flip=False):
     """Flip bounding boxes accordingly.
 
     The bounding boxes are expected to be packed into a two dimensional
@@ -103,15 +104,13 @@ def flip_bbox(bbox, size, y_flip=False, x_flip=False):
     H, W = size
     bbox = bbox.copy()
     if y_flip:
-        y_max = H - bbox[:, 0]
-        y_min = H - bbox[:, 2]
-        bbox[:, 0] = y_min
-        bbox[:, 2] = y_max
+        bbox[:, 1::2] = H - bbox[:, 1::2]
     if x_flip:
-        x_max = W - bbox[:, 1]
-        x_min = W - bbox[:, 3]
-        bbox[:, 1] = x_min
-        bbox[:, 3] = x_max
+        # x_max = W - bbox[:, 1]
+        # x_min = W - bbox[:, 3]
+        # bbox[:, 1] = x_min
+        # bbox[:, 3] = x_max
+        bbox[:, 0::2] = W - bbox[:, 0::2]
     return bbox
 
 
@@ -238,13 +237,14 @@ def translate_bbox(bbox, y_offset=0, x_offset=0):
     return out_bbox
 
 
-def random_flip(img, y_random=False, x_random=False,
-                return_param=False, copy=False):
+# ---------------------------------------------------------------#
+
+def random_image_flip(img, x_random=False, y_random=False, return_param=True):
     """Randomly flip an image in vertical or horizontal direction.
 
     Args:
         img (~numpy.ndarray): An array that gets flipped. This is in
-            CHW format.
+            HWC format.
         y_random (bool): Randomly flip in vertical direction.
         x_random (bool): Randomly flip in horizontal direction.
         return_param (bool): Returns information of flip.
@@ -275,18 +275,14 @@ def random_flip(img, y_random=False, x_random=False,
         x_flip = random.choice([True, False])
 
     if y_flip:
-        img = img[:, ::-1, :]
+        img = img[::-1, :, :]
     if x_flip:
-        img = img[:, :, ::-1]
-
-    if copy:
-        img = img.copy()
-
+        img = img[:, ::-1, :]
+    img = img.copy()
     if return_param:
-        return img, {'y_flip': y_flip, 'x_flip': x_flip}
+        return img, {'x_flip': x_flip, 'y_flip': y_flip}
     else:
         return img
-# ---------------------------------------------------------------#
 
 
 def numpy_box2list(bbox):
@@ -311,8 +307,6 @@ def tvtsf2np(img):
     img = img.numpy() * 255
     img = img.astype('uint8')
     img = np.transpose(img, (1, 2, 0))
-    B, G, R = cv2.split(img)
-    img = cv2.merge([R, G, B])
     return img
 
 
@@ -321,12 +315,25 @@ def show_bbox_image(image, bbox):
         image = tvtsf2np(image)
     if not isinstance(bbox, list):
         bbox = numpy_box2list(bbox)
-    for elm in bbox:
-        pts = np.array(elm, np.int32)
-        pts.reshape((-1, 1, 2))
-        cv2.polylines(image, [pts], True, (255, 0, 0), 2)
-    cv2.imshow('1', image)
+    # 不copy会报错
+    img = image.copy()
+    for i, elm in enumerate(bbox):
+        elm = np.array(elm, np.int32)
+        cv2.line(img, tuple(elm[0]), tuple(elm[1]), (255, 0, 0), 2)
+        cv2.line(img, tuple(elm[1]), tuple(elm[2]), (0, 255, 0), 2)
+        cv2.line(img, tuple(elm[2]), tuple(elm[3]), (255, 0, 0), 2)
+        cv2.line(img, tuple(elm[3]), tuple(elm[0]), (0, 255, 0), 2)
+        img = cv2.putText(img, '{num}'.format(num=i), tuple(elm[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+    cv2.imshow('1', img)
     cv2.waitKey(0)
+
+
+def show_batch_image(image, bbox):
+    for img, box in zip(image, bbox):
+        img = tvtsf2np(img)
+        box = box.numpy()
+        box = numpy_box2list(box)
+        show_bbox_image(img, box)
 
 
 def calculate_x_angle(bbox):
@@ -364,7 +371,7 @@ def calculate_angle(bbox):
         angle_res = 270 - x_angle
     if x_angle == 90:
         angle_res = 0
-    if x_angle ==0:
+    if x_angle == 0:
         angle_res = 90
     return angle_res
 
@@ -386,6 +393,7 @@ def angle_add0(angles, num):
 
 
 def box_remove0(bbox):
+    # 输入一个numpy类型的bbox，返回numpy类型
     zeros = np.zeros(8)
     length = bbox.shape[0]
     for i, box in enumerate(bbox):
@@ -394,6 +402,43 @@ def box_remove0(bbox):
             break
     bbox = bbox[:length]
     return bbox, length
+
+
+class RandomCenterCrop(object):
+    def __init__(self, x_offset=50, y_offset=50):
+        self.x_offset = x_offset
+        self.y_offset = y_offset
+
+    def __call__(self, img, bbox):
+        # 输入一张opencv读取的numpy类型的image
+        # 输入该张image在数据集中对应的numpy类型抓取框数组
+        random_x = np.random.randint(-self.x_offset, self.x_offset, 1)[0]
+        random_y = np.random.randint(-self.y_offset, self.y_offset, 1)[0]
+        # 使用copy()函数，防止改变数据集原本存储的self.data值
+        bbox = bbox.copy()
+        img = img.copy()
+        # 随机裁剪图像
+        img = img[80 + random_y:400 + random_y, 160 + random_x:480 + random_x, :]
+        # 随机翻转图像
+        img, param = random_image_flip(img, True, True, True)
+        x_flip = param.get('x_flip')
+        y_flip = param.get('y_flip')
+        H = img.shape[0]
+        W = img.shape[1]
+        # 按照图像随机裁剪的数值将bbox缩放至图像内，后随机翻转
+        bbox[:, 0::2] = bbox[:, 0::2] - 160 - random_x
+        bbox[:, 1::2] = bbox[:, 1::2] - 80 - random_y
+        bbox = flip_bbox(bbox, (H, W), x_flip, y_flip)
+        need_del = []
+        for i, box in enumerate(bbox):
+            if (box < 0).any():
+                need_del.append(i)
+            if (box >= 320).any():
+                need_del.append(i)
+        bbox = np.delete(bbox, need_del, 0)
+        zeros = np.zeros((len(need_del), 8))
+        bbox = np.vstack((bbox, zeros))
+        return img, bbox
 
 # ---------------------------------------------------------------------------------#
 
