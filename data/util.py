@@ -77,45 +77,6 @@ def resize_bbox(bbox, in_size, out_size):
     return bbox
 
 
-# 这个函数之后可能有用
-def flip_bbox(bbox, size, x_flip=False, y_flip=False):
-    """Flip bounding boxes accordingly.
-
-    The bounding boxes are expected to be packed into a two dimensional
-    tensor of shape :math:`(R, 4)`, where :math:`R` is the number of
-    bounding boxes in the image. The second axis represents attributes of
-    the bounding box. They are :math:`(y_{min}, x_{min}, y_{max}, x_{max})`,
-    where the four attributes are coordinates of the top left and the
-    bottom right vertices.
-
-    Args:
-        bbox (~numpy.ndarray): An array whose shape is :math:`(R, 4)`.
-            :math:`R` is the number of bounding boxes.
-        size (tuple): A tuple of length 2. The height and the width
-            of the image before resized.
-        y_flip (bool): Flip bounding box according to a vertical flip of
-            an image.
-        x_flip (bool): Flip bounding box according to a horizontal flip of
-            an image.
-
-    Returns:
-        ~numpy.ndarray:
-        Bounding boxes flipped according to the given flips.
-
-    """
-    H, W = size
-    bbox = bbox.copy()
-    if y_flip:
-        bbox[:, 1::2] = H - bbox[:, 1::2]
-    if x_flip:
-        # x_max = W - bbox[:, 1]
-        # x_min = W - bbox[:, 3]
-        # bbox[:, 1] = x_min
-        # bbox[:, 3] = x_max
-        bbox[:, 0::2] = W - bbox[:, 0::2]
-    return bbox
-
-
 def crop_bbox(
         bbox, y_slice=None, x_slice=None,
         allow_outside_center=True, return_param=False):
@@ -333,6 +294,44 @@ def random_image_flip(img, x_random=False, y_random=False, return_param=True):
         return img
 
 
+def flip_bbox(bbox, size, x_flip=False, y_flip=False):
+    """Flip bounding boxes accordingly.
+
+    The bounding boxes are expected to be packed into a two dimensional
+    tensor of shape :math:`(R, 4)`, where :math:`R` is the number of
+    bounding boxes in the image. The second axis represents attributes of
+    the bounding box. They are :math:`(y_{min}, x_{min}, y_{max}, x_{max})`,
+    where the four attributes are coordinates of the top left and the
+    bottom right vertices.
+
+    Args:
+        bbox (~numpy.ndarray): An array whose shape is :math:`(R, 4)`.
+            :math:`R` is the number of bounding boxes.
+        size (tuple): A tuple of length 2. The height and the width
+            of the image before resized.
+        y_flip (bool): Flip bounding box according to a vertical flip of
+            an image.
+        x_flip (bool): Flip bounding box according to a horizontal flip of
+            an image.
+
+    Returns:
+        ~numpy.ndarray:
+        Bounding boxes flipped according to the given flips.
+
+    """
+    H, W = size
+    bbox = bbox.copy()
+    if y_flip:
+        bbox[:, 1::2] = H - bbox[:, 1::2]
+    if x_flip:
+        bbox[:, 0::2] = W - bbox[:, 0::2]
+    return bbox
+
+
+# def angle_rotate(angles, rotate_angle):
+#     angles[::] = angles[::] + rotate_angle
+
+
 def numpy_box2list(bbox):
     # 输入一张图片的相应numpy格式抓取框
     res = []
@@ -461,19 +460,23 @@ class PreProcess(object):
     def __call__(self, img, bbox):
         # 输入一张opencv读取的numpy类型的image
         # 输入该张image在数据集中对应的numpy类型抓取框数组
+        box_angle = []
         img, bbox = random_crop(img, bbox, self.x_offset, self.y_offset)
         # random_crop函数中对img和bbox都使用了copy函数
-        need_del = []
+        # 第一次过滤裁切完后不在image中的bbox
+        box_num = bbox.shape[0]
+        crop_mask = []
         for i, box in enumerate(bbox):
             if (box < 0).any():
-                need_del.append(i)
+                crop_mask.append(i)
             if (box >= 320).any():
-                need_del.append(i)
-        bbox = np.delete(bbox, need_del, 0)
-        zeros = np.zeros((len(need_del), 8))
+                crop_mask.append(i)
+        bbox = np.delete(bbox, crop_mask, 0)
+        zeros = np.zeros((len(crop_mask), 8))
         bbox = np.vstack((bbox, zeros))
         # 对img和bbox进行随机旋转
         img, bbox = rotate_box_image(bbox, img, self.angle)
+
         # rotate_box_image函数中对bbox使用了copy函数
         # 随机翻转图像
         img, param = random_image_flip(img, True, True, True)
@@ -483,17 +486,29 @@ class PreProcess(object):
         W = img.shape[1]
         # 翻转bbox
         bbox = flip_bbox(bbox, (H, W), x_flip, y_flip)
+
         # 剔除不在图像内的bbox
-        need_del = []
+        rotate_mask = []
         for i, box in enumerate(bbox):
             if (box < 0).any():
-                need_del.append(i)
+                rotate_mask.append(i)
             if (box >= 320).any():
-                need_del.append(i)
-        bbox = np.delete(bbox, need_del, 0)
-        zeros = np.zeros((len(need_del), 8))
+                rotate_mask.append(i)
+        bbox = np.delete(bbox, rotate_mask, 0)
+        zeros = np.zeros((len(rotate_mask), 8))
         bbox = np.vstack((bbox, zeros))
-        return img, bbox
+        # 对经过预处理后的bbox计算其在图像中的角度
+        box_num = box_num - len(crop_mask) - len(rotate_mask)
+        box_tmp = bbox.copy()
+        box_tmp = box_tmp[:box_num]
+        box_tmp = numpy_box2list(box_tmp)
+        for elm in box_tmp:
+            angle = calculate_angle(elm)
+            box_angle.append(angle)
+        box_angle = np.array(box_angle)
+        angle_zero = np.zeros(len(crop_mask)+len(rotate_mask), )
+        box_angle = np.hstack((box_angle, angle_zero))
+        return img, bbox, box_angle
 
 # ---------------------------------------------------------------------------------#
 
