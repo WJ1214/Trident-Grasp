@@ -16,11 +16,12 @@ img, box, angle = data
 # cv2.imshow('1', img)
 # cv2.waitKey(0)
 
-dataloader = Data.DataLoader(dataset, 5)
+dataloader = Data.DataLoader(dataset, 1)
 for i, data in enumerate(dataloader):
     img, box, angle = data
+    print('box:', box)
+    print('angle:', angle)
     util.show_batch_image(img, box)
-
 
 # img_path = dataset.image[0]
 # img = io.imread(img_path)
