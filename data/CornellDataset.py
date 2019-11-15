@@ -52,12 +52,6 @@ class CornellDataset(Dataset):
             angles = np.array(angles)
             self.angles.append(angles)
 
-        # for i, (bbox, angle) in enumerate(zip(self.data, self.angles)):
-        #     bbox = util.box_add0(bbox, max_num)
-        #     angle = util.angle_add0(angle, max_num)
-        #     self.data[i] = bbox
-        #     self.angles[i] = angle
-
         # chose if train data
         if train:
             number = int(len(self.image) * 0.7)
@@ -81,7 +75,7 @@ class CornellDataset(Dataset):
         # img = Image.open(img).convert('RGB')
         img = cv2.imread(img)
         if not isinstance(self.transforms, torchvision.transforms.ToTensor):
-            img, box = self.transforms(img, self.data[index])
+            img, box, angle = self.transforms(img, self.data[index])
             trans = torchvision.transforms.ToTensor()
             img = trans(img)
             box = util.box_add0(box, self.max_num)
@@ -89,7 +83,8 @@ class CornellDataset(Dataset):
             img = self.transforms(img)
             box = self.data[index]
             box = util.box_add0(box, self.max_num)
-        angle = util.angle_add0(self.angles[index], self.max_num)
+            angle = self.angles[index]
+        angle = util.angle_add0(angle, self.max_num)
         return img, box, angle
 
     def __len__(self):
