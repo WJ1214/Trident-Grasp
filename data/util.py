@@ -358,6 +358,7 @@ def tvtsf2np(img):
 
 
 def show_bbox_image(image, bbox):
+    # 输入numpy类型的image和bbox，显示相应的图片
     if not isinstance(image, np.ndarray):
         image = tvtsf2np(image)
     if not isinstance(bbox, list):
@@ -376,9 +377,10 @@ def show_bbox_image(image, bbox):
 
 
 def show_batch_image(image, bbox):
+    # 输入dataloader加载的一个batch的image和bbox，显示数值
     for img, box in zip(image, bbox):
         img = tvtsf2np(img)
-        box = box.numpy()
+        # box = box.numpy()
         box = numpy_box2list(box)
         show_bbox_image(img, box)
 

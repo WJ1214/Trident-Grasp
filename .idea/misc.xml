@@ -17,5 +17,5 @@
       </profile-state>
     </entry>
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.7 (Trident)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Remote Python 3.6.9 (sftp://wj@10.0.112.42:22/home/wj/.conda/envs/Trident/bin/python3.6)" project-jdk-type="Python SDK" />
 </project>

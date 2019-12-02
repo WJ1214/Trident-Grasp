@@ -21,7 +21,7 @@ def rotate_anchor_box(anchor_box, base_size, angle):
 
 
 def generate_base_anchor(base_size=32, angle=30):
-    vertical_anchor = np.array([0, 0, base_size-1, 0, base_size-1, base_size-1, 0, base_size-1])
+    vertical_anchor = np.array([0, 0, 0, base_size-1, base_size-1, base_size-1, base_size-1, 0])
     base_anchor = rotate_anchor_box(vertical_anchor, base_size, angle)
     base_anchor = base_anchor.reshape((1, 8))
     return base_anchor, angle

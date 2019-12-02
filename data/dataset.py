@@ -59,6 +59,7 @@ def preprocess(img, min_size=600, max_size=1000):
         ~numpy.ndarray: A preprocessed image.
 
     """
+    # 将原图缩放至要求大小范围
     C, H, W = img.shape
     scale1 = min_size / min(H, W)
     scale2 = max_size / max(H, W)
@@ -75,12 +76,13 @@ def preprocess(img, min_size=600, max_size=1000):
 
 
 class Transform(object):
-
+    # 将bbox和img先后经过缩放和翻转后的结果返回
     def __init__(self, min_size=600, max_size=1000):
         self.min_size = min_size
         self.max_size = max_size
 
     def __call__(self, in_data):
+        # 先缩放后水平翻转
         img, bbox, label = in_data
         _, H, W = img.shape
         img = preprocess(img, self.min_size, self.max_size)
@@ -105,7 +107,7 @@ class Dataset:
 
     def __getitem__(self, idx):
         ori_img, bbox, label, difficult = self.db.get_example(idx)
-
+        # 获取单张图像与其相关数据，之后对单张数据进行预处理，直接返回处理结果
         img, bbox, label, scale = self.tsf((ori_img, bbox, label))
         # TODO: check whose stride is negative to fix this instead copy all
         # some of the strides of a given numpy array are negative.

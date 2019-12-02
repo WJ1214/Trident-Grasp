@@ -85,6 +85,7 @@ class CornellDataset(Dataset):
             box = util.box_add0(box, self.max_num)
             angle = self.angles[index]
         angle = util.angle_add0(angle, self.max_num)
+        # box为(x, y, x, y, x, y, x, y)格式
         return img, box, angle
 
     def __len__(self):
