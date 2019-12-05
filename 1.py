@@ -57,8 +57,8 @@ data2 = np.array(data2)
 test_data2 = np.array(test_data2)
 
 test_data = np.array(test_data)
-rotate_keep = nms(data2, 0.8)
-keep = cpu_nms(test_data2, 0.8)
+rotate_keep = nms(data2, 0.9)
+keep = cpu_nms(test_data2, 0.9)
 print(rotate_keep)
 print(keep)
 
