@@ -1,14 +1,17 @@
 from data.CornellDataset import CornellDataset
 import torch
 import torch.utils.data as Data
-import torchvision.transforms as transform
 import cv2
 import numpy as np
 import data.util as util
 import math
 from Module.utils.bbox_tools import generate_base_anchor, enumerate_shifted_anchor
 import torch.nn as nn
-from Module.nms.NMS import intersection, nms, cpu_nms, non_max_suppression
+from Module.nms.NMS import nms
+from collections import namedtuple
+from torchvision.models import resnet50
+from Module.TestModule.testnet import resnet18
+from dcn.modules.deform_conv import DeformConvPack
 
 
 # 数据集测试
@@ -37,44 +40,12 @@ trans = util.PreProcess()
 #     img, box, angle = data
 #     util.show_batch_image(img, box)
 
-test_data = [[204, 102, 358, 102, 358, 250, 204, 250, 0.5],
-             [257, 118, 380, 118, 380, 250, 257, 250, 0.7],
-             [280, 135, 400, 135, 400, 250, 280, 250, 0.6],
-             [255, 118, 360, 118, 360, 235, 255, 235, 0.7]]
-dets = np.array([
-                [204, 102, 358, 250, 0.5],
-                [257, 118, 380, 250, 0.7],
-                [280, 135, 400, 250, 0.6],
-                [255, 118, 360, 235, 0.7]])
 
-data2 = [[10, 10, 15, 10, 15, 20, 10, 20, 0.8],
-         [12, 13, 17, 13, 17, 23, 12, 23, 0.7],
-         [50, 20, 60, 20, 60, 70, 50, 70, 0.6]]
-test_data2 = [[10, 10, 15, 20, 0.8],
-              [12, 13, 17, 23, 0.7],
-              [50, 20, 60, 70, 0.6]]
-data2 = np.array(data2)
-test_data2 = np.array(test_data2)
-
-test_data = np.array(test_data)
-rotate_keep = nms(data2, 0.9)
-keep = cpu_nms(test_data2, 0.9)
-print(rotate_keep)
-print(keep)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# net = resnet18()
+# print(net)
+conv = DeformConvPack(3, 5, 3, 1, 1)
+print(conv.weight)
+print(conv.bias)
 
 
 

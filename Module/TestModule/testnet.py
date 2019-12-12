@@ -1,5 +1,6 @@
 import torch.nn as nn
 from dcn.modules.modulated_deform_conv import ModulatedDeformConv, ModulatedDeformConvPack
+from dcn.modules.deform_conv import DeformConvPack
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -50,10 +51,10 @@ class BasicDeformableBlock(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicDeformableBlock, self).__init__()
-        self.conv1 = ModulatedDeformConv(inplanes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv1 = DeformConvPack(inplanes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = ModulatedDeformConv(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv2 = DeformConvPack(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
@@ -82,11 +83,11 @@ class DeformableBottleneck(nn.Module):
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(DeformableBottleneck, self).__init__()
-        self.conv1 = ModulatedDeformConv(inplanes, planes, kernel_size=1, stride=1, bias=False, padding=0)
+        self.conv1 = DeformConvPack(inplanes, planes, kernel_size=1, stride=1, bias=False, padding=0)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = ModulatedDeformConv(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.conv2 = DeformConvPack(planes, planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = ModulatedDeformConv(planes, planes * self.expansion, kernel_size=1, stride=1, bias=False,padding=0)
+        self.conv3 = DeformConvPack(planes, planes * self.expansion, kernel_size=1, stride=1, bias=False,padding=0)
         self.bn3 = nn.BatchNorm2d(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
