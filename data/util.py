@@ -6,77 +6,6 @@ import math
 import skimage.transform as transform
 
 
-def read_image(path, dtype=np.float32, color=True):
-    """Read an image from a file.
-
-    This function reads an image from given file. The image is CHW format and
-    the range of its value is :math:`[0, 255]`. If :obj:`color = True`, the
-    order of the channels is RGB.
-
-    Args:
-        path (str): A path of image file.
-        dtype: The type of array. The default value is :obj:`~numpy.float32`.
-        color (bool): This option determines the number of channels.
-            If :obj:`True`, the number of channels is three. In this case,
-            the order of the channels is RGB. This is the default behaviour.
-            If :obj:`False`, this function returns a grayscale image.
-
-    Returns:
-        ~numpy.ndarray: An image.
-    """
-
-    f = Image.open(path)
-    try:
-        if color:
-            img = f.convert('RGB')
-        else:
-            img = f.convert('P')
-        img = np.asarray(img, dtype=dtype)
-    finally:
-        if hasattr(f, 'close'):
-            f.close()
-
-    if img.ndim == 2:
-        # reshape (H, W) -> (1, H, W)
-        return img[np.newaxis]
-    else:
-        # transpose (H, W, C) -> (C, H, W)
-        return img.transpose((2, 0, 1))
-
-
-def resize_bbox(bbox, in_size, out_size):
-    """Resize bounding boxes according to image resize.
-
-    The bounding boxes are expected to be packed into a two dimensional
-    tensor of shape :math:`(R, 4)`, where :math:`R` is the number of
-    bounding boxes in the image. The second axis represents attributes of
-    the bounding box. They are :math:`(y_{min}, x_{min}, y_{max}, x_{max})`,
-    where the four attributes are coordinates of the top left and the
-    bottom right vertices.
-
-    Args:
-        bbox (~numpy.ndarray): An array whose shape is :math:`(R, 4)`.
-            :math:`R` is the number of bounding boxes.
-        in_size (tuple): A tuple of length 2. The height and the width
-            of the image before resized.
-        out_size (tuple): A tuple of length 2. The height and the width
-            of the image after resized.
-
-    Returns:
-        ~numpy.ndarray:
-        Bounding boxes rescaled according to the given image shapes.
-
-    """
-    bbox = bbox.copy()
-    y_scale = float(out_size[0]) / in_size[0]
-    x_scale = float(out_size[1]) / in_size[1]
-    bbox[:, 0] = y_scale * bbox[:, 0]
-    bbox[:, 2] = y_scale * bbox[:, 2]
-    bbox[:, 1] = x_scale * bbox[:, 1]
-    bbox[:, 3] = x_scale * bbox[:, 3]
-    return bbox
-
-
 def crop_bbox(
         bbox, y_slice=None, x_slice=None,
         allow_outside_center=True, return_param=False):
@@ -201,6 +130,34 @@ def translate_bbox(bbox, y_offset=0, x_offset=0):
 
 
 # ---------------------------------------------------------------#
+def show_bbox_image(image, bbox):
+    # 输入numpy类型的image和bbox，显示相应的图片
+    if not isinstance(image, np.ndarray):
+        image = tvtsf2np(image)
+    if not isinstance(bbox, list):
+        bbox = numpy_box2list(bbox)
+    # 不copy会报错
+    img = image.copy()
+    for i, elm in enumerate(bbox):
+        elm = np.array(elm, np.int32)
+        cv2.line(img, tuple(elm[0]), tuple(elm[1]), (255, 0, 0), 2)
+        cv2.line(img, tuple(elm[1]), tuple(elm[2]), (0, 255, 0), 2)
+        cv2.line(img, tuple(elm[2]), tuple(elm[3]), (255, 0, 0), 2)
+        cv2.line(img, tuple(elm[3]), tuple(elm[0]), (0, 255, 0), 2)
+        # img = cv2.putText(img, '{num}'.format(num=i), tuple(elm[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+    cv2.imshow('1', img)
+    cv2.waitKey(0)
+
+
+def show_batch_image(image, bbox):
+    # 输入dataloader加载的一个batch的image和bbox，显示数值
+    for img, box in zip(image, bbox):
+        img = tvtsf2np(img)
+        # box = box.numpy()
+        box = numpy_box2list(box)
+        show_bbox_image(img, box)
+
+
 def rotate_loc(point, img, angle):
     # 输入点在图像上的位置以及相应的numpy格式图像、旋转角度angle，返回旋转图像后点在图像上的位置
     x1, y1 = point
@@ -357,34 +314,6 @@ def tvtsf2np(img):
     return img
 
 
-def show_bbox_image(image, bbox):
-    # 输入numpy类型的image和bbox，显示相应的图片
-    if not isinstance(image, np.ndarray):
-        image = tvtsf2np(image)
-    if not isinstance(bbox, list):
-        bbox = numpy_box2list(bbox)
-    # 不copy会报错
-    img = image.copy()
-    for i, elm in enumerate(bbox):
-        elm = np.array(elm, np.int32)
-        cv2.line(img, tuple(elm[0]), tuple(elm[1]), (255, 0, 0), 2)
-        cv2.line(img, tuple(elm[1]), tuple(elm[2]), (0, 255, 0), 2)
-        cv2.line(img, tuple(elm[2]), tuple(elm[3]), (255, 0, 0), 2)
-        cv2.line(img, tuple(elm[3]), tuple(elm[0]), (0, 255, 0), 2)
-        img = cv2.putText(img, '{num}'.format(num=i), tuple(elm[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-    cv2.imshow('1', img)
-    cv2.waitKey(0)
-
-
-def show_batch_image(image, bbox):
-    # 输入dataloader加载的一个batch的image和bbox，显示数值
-    for img, box in zip(image, bbox):
-        img = tvtsf2np(img)
-        # box = box.numpy()
-        box = numpy_box2list(box)
-        show_bbox_image(img, box)
-
-
 def calculate_x_angle(bbox):
     # 输入一个list格式的抓取框
     vex1 = bbox[0]
@@ -451,6 +380,39 @@ def box_remove0(bbox):
             break
     bbox = bbox[:length]
     return bbox, length
+
+
+def points2xywh(bbox):
+    # 输入一个numpy类型的bbox(4个点的坐标),返回其(x, y, w, h)，角度数据在数据集中已经给出
+    # bbox为一张图片所有的检测框，返回其对应的一张图片所有的检测框对应数据，原位补0的照常补0
+    res = []
+    zeros = np.zeros(8)
+    length = bbox.shape[0]
+    for i, box in enumerate(bbox):
+        if(box == zeros).all():
+            length = i
+            break
+    # 先求出bbox中未补0的长度length
+    for i in range(length):
+        res_box = []
+        box = bbox[i]
+        x = (box[0] + box[4])/2
+        y = (box[1] + box[5])/2
+        w = math.sqrt((box[0] - box[2])**2 + (box[1] - box[3])**2)
+        h = math.sqrt((box[2] - box[4])**2 + (box[3] - box[5])**2)
+        res_box.append(x)
+        res_box.append(y)
+        res_box.append(w)
+        res_box.append(h)
+        res.append(res_box)
+    # 非补0位置循环计算完毕，对剩余位置进行补0
+    res = np.array(res)
+    need = bbox.shape[0] - length
+    zeros = np.zeros((need, 4))
+    res = np.vstack((res, zeros))
+    # 进行取整操作
+    res = np.rint(res)
+    return res
 
 
 class PreProcess(object):

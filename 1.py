@@ -1,25 +1,15 @@
 from data.CornellDataset import CornellDataset
 import torch
-import torch.utils.data as Data
-import cv2
-import numpy as np
 import data.util as util
-import math
-from Module.utils.bbox_tools import generate_base_anchor, enumerate_shifted_anchor
-import torch.nn as nn
-from Module.nms.NMS import nms
-from collections import namedtuple
 from torchvision.models import resnet50
-from Module.TestModule.testnet import resnet18
-from dcn.modules.deform_conv import DeformConvPack
 
 
 # 数据集测试
 root = 'D:/Cornell_data/dataset'
 trans = util.PreProcess()
-# dataset = CornellDataset(root, True, trans)
-# data = dataset.__getitem__(0)
-# img, box, angle = data
+dataset = CornellDataset(root, True, trans)
+data = dataset.__getitem__(0)
+img, box, angle = data
 # anchor_box, _ = generate_base_anchor()
 # util.show_bbox_image(img, anchor_box)
 
@@ -41,12 +31,11 @@ trans = util.PreProcess()
 #     util.show_batch_image(img, box)
 
 
-# net = resnet18()
-# print(net)
-conv = DeformConvPack(3, 5, 3, 1, 1)
-print(conv.weight)
-print(conv.bias)
-
+# test_dic = {'model': 1, 'path': 'home/Downloads', 'name': 'this model'}
+# path = 'C:/Users/王杰/PycharmProjects/Trident-Grasp/save_test/savefile'
+# torch.save(test_dic, path)
+net = resnet50(False)
+device = torch.device('cuda:0')
 
 
 
