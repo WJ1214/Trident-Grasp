@@ -20,16 +20,23 @@ class CornellDataset(Dataset):
     def __init__(self, path, train=True, transforms=torchvision.transforms.ToTensor()):
         self.image = []
         self.data = []                        # bbox of every image
+        self.image_names = []
+        self.data_names = []
         self.angles = []
         self.transforms = transforms
         self.max_num = 0
         if os.path.exists(path):
             self.image_path = "{}/image".format(path)
             self.data_path = "{}/pos_label".format(path)
+            # 按顺序取文件位置和文件名
+            self.image_names = sorted(os.listdir(self.image_path))
+            self.data_names = sorted(os.listdir(self.data_path))
         else:
             raise Exception("noSuchFilePath")
 
-        for image, pos_label in zip(os.scandir(self.image_path), os.scandir(self.data_path)):
+        for image_name, data_name in zip(self.image_names, self.data_names):
+            image = '{image_path}/{image_name}'.format(image_path=self.image_path, image_name=image_name)
+            pos_label = '{data_path}/{data_name}'.format(data_path=self.data_path, data_name=data_name)
             image_box = []
             for lines in open(pos_label):
                 image_box.append(list(map(float, lines.split())))
@@ -39,8 +46,7 @@ class CornellDataset(Dataset):
             self.max_num = max(self.max_num, num)
             image_box = image_box.reshape((num, 8))
             self.data.append(image_box)
-            img = "{root}/image/{image_name}".format(root=path, image_name=image.name)
-            self.image.append(img)
+            self.image.append(image)
 
         box = self.data.copy()
         for bbox in box:
@@ -52,7 +58,7 @@ class CornellDataset(Dataset):
             angles = np.array(angles)
             self.angles.append(angles)
 
-        # chose if train data
+        # 取训练数据和测试数据
         if train:
             number = int(len(self.image) * 0.7)
             self.image = self.image[:number]

@@ -2,14 +2,23 @@ from data.CornellDataset import CornellDataset
 import torch
 import data.util as util
 from torchvision.models import resnet50
+import os
+import torch.utils.data as Data
 
 
 # 数据集测试
-root = 'D:/Cornell_data/dataset'
-trans = util.PreProcess()
-dataset = CornellDataset(root, True, trans)
-data = dataset.__getitem__(0)
-img, box, angle = data
+root = '/Users/wangjie/Downloads/cornell data'
+# trans = util.PreProcess()
+dataset = CornellDataset(root)
+length = dataset.__len__()
+for i in range(length):
+	print(i)
+	print(dataset.data)
+
+# data = dataset.data[0]
+# img = dataset.image[0]
+# print(img)
+# print(data)
 # anchor_box, _ = generate_base_anchor()
 # util.show_bbox_image(img, anchor_box)
 
@@ -34,8 +43,11 @@ img, box, angle = data
 # test_dic = {'model': 1, 'path': 'home/Downloads', 'name': 'this model'}
 # path = 'C:/Users/王杰/PycharmProjects/Trident-Grasp/save_test/savefile'
 # torch.save(test_dic, path)
-net = resnet50(False)
-device = torch.device('cuda:0')
+
+
+
+
+
 
 
 
